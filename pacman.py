@@ -2,19 +2,28 @@ import pygame
 from pygame.locals import *
 from vector import Vector2
 from constants import *
+from entity import Entity
 
-class Pacman(object):
+class Pacman(Entity):
     def __init__(self, node):
-        self.name = PACMAN
-        self.directions = {STOP:Vector2(), UP:Vector2(0,-1), DOWN:Vector2(0,1), LEFT:Vector2(-1,0), RIGHT:Vector2(1,0)}
-        self.direction = STOP
-        self.speed = 100 * TILEWIDTH/16
-        self.radius = 10
+        Entity.__init__(self, node )
+        self.name = PACMAN    
         self.color = YELLOW
-        self.node = node
-        self.setPosition()
-        self.target = node
-        self.collideRadius = 5
+        self.direction = LEFT
+        self.setBetweenNodes(LEFT)
+        self.alive = True
+    
+    def reset(self):
+        Entity.reset(self)
+        self.direction = LEFT
+        self.setBetweenNodes(LEFT)
+        self.alive = True
+
+    def die(self):
+        self.alive = False
+        self.direction = STOP
+
+
 
     def setPosition(self):
         self.position = self.node.position.copy()
@@ -31,9 +40,8 @@ class Pacman(object):
                 self.direction = direction
             else:
                 self.target = self.getNewTarget(self.direction)
-
             if self.target is self.node:
-             self.direction = STOP
+                self.direction = STOP
             self.setPosition()
         else: 
             if self.oppositeDirection(direction):
@@ -49,23 +57,19 @@ class Pacman(object):
         if self.validDirection(direction):
             return self.node.neighbors[direction]
         return self.node
-        
+
     def getValidKey(self):
         key_pressed = pygame.key.get_pressed()
-        if key_pressed[K_UP] or key_pressed[K_w]:
+        if key_pressed[K_UP]:
             return UP
-        if key_pressed[K_DOWN] or key_pressed[K_s]:
+        if key_pressed[K_DOWN]:
             return DOWN
-        if key_pressed[K_LEFT] or key_pressed[K_a]:
+        if key_pressed[K_LEFT]:
             return LEFT
-        if key_pressed[K_RIGHT] or key_pressed[K_d]:
+        if key_pressed[K_RIGHT]:
             return RIGHT
         return STOP
     
-    def render(self, screen):
-        p = self.position.asInt()
-        pygame.draw.circle(screen, self.color, p, self.radius)
-        
     def overshotTarget(self):
         if self.target is not None:
             vec1 = self.target.position - self.node.position
@@ -89,9 +93,21 @@ class Pacman(object):
     
     def eatPellets(self, pelletList):
         for pellet in pelletList:
-            d = self.position - pellet.position
-            dSquared = d.magnitudeSquared()
-            rSquared = (pellet.radius+self.collideRadius)**2
-            if dSquared <= rSquared:
+            if self.collideCheck(pellet):
                 return pellet
         return None
+    
+    def collideGhost(self, ghost):
+        return self.collideCheck(ghost)
+
+    def collideCheck(self, other):
+        d = self.position - other.position
+        dSquared = d.magnitudeSquared()
+        rSquared = (self.collideRadius + other.collideRadius)**2
+        if dSquared <= rSquared:
+            return True
+        return False
+
+    def render(self, screen):
+        p = self.position.asInt()
+        pygame.draw.circle(screen, self.color, p, self.radius)
